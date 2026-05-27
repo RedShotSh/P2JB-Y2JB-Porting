@@ -2330,6 +2330,7 @@
             case 4: eta_minutes = 50; break;
             default: eta_minutes = Math.round(48 * 4 / leak_nw); break;
         }
+
         const eta_str = eta_minutes < 60
             ? "~" + eta_minutes + " min"
             : "~" + Math.floor(eta_minutes / 60) + "h" +
@@ -2338,12 +2339,65 @@
         const fmt_hm = d =>
             String(d.getHours()).padStart(2, '0') + ':' +
             String(d.getMinutes()).padStart(2, '0');
+
         const t_start = new Date();
         const t_eta = new Date(t_start.getTime() + eta_minutes * 60000);
+
         await ulog("host OK - starting " + leak_nw + "-core leak at " +
             fmt_hm(t_start) + ", ETA stage0 ~" + fmt_hm(t_eta) +
             " (" + eta_str + "); no further log output until then " +
             "(this is normal, do not interrupt)");
+
+        // Jailbreak progress bar with percentage and countdown time.
+        const fmtRemaining = ms => {
+            const totalMin = Math.max(0, Math.floor(ms / 60000));
+            const h = Math.floor(totalMin / 60);
+            const m = totalMin % 60;
+            return h > 0 ? "~" + h + "h " + m + "m" : "~" + m + "m";
+        };
+
+        const percentBar = percent => {
+            const size = 20;
+            const filled = Math.round((percent / 100) * size);
+            return "[" + "█".repeat(filled) + "░".repeat(size - filled) + "] " + Math.floor(percent) + "%";
+        };
+
+        let running = false;
+        let lastStep = -1;
+        const step = 5;
+
+        const stageIntervale = setInterval(async () => {
+            if (running)
+                return;
+
+            running = true;
+
+            try {
+                const totalTime = t_eta - t_start;
+                const elapsed = Date.now() - t_start;
+                const differenceTime = t_eta - Date.now();
+
+                const percent = Math.min(100, Math.max(0, (elapsed / totalTime) * 100));
+                const currentStep = Math.floor(percent / step);
+
+                if (differenceTime <= 0 || percent >= 100) {
+                    const msg = "ETA stage0 ~ " + percentBar(100) + " (0:00)";
+                    await ulog(msg);
+                    running = false;
+                    clearInterval(stageIntervale);
+                    return;
+                }
+
+                if (currentStep !== lastStep) {
+                    lastStep = currentStep;
+                    const msg = "ETA stage0 ~ " + percentBar(percent) + " (" + fmtRemaining(differenceTime) + ")";
+                    await ulog(msg);
+                }
+            }
+            finally {
+                running = false;
+            }
+        }, 1000);
 
         setup_workers(S);
         setup_ipv6_spray(S);
