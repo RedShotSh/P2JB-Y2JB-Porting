@@ -970,6 +970,7 @@
         }
 
         async function stage0(S) {
+            await ulog("ETA stage0 ~ " + percentBar(100) + " (~0m)");
             send_notification("Stage 0\nTriple-free race");
 
             if (failcheck_path) {
@@ -2381,7 +2382,7 @@
                 const currentStep = Math.floor(percent / step);
 
                 if (differenceTime <= 0 || percent >= 100) {
-                    const msg = "ETA stage0 ~ " + percentBar(100) + " (0:00)";
+                    const msg = "ETA stage0 ~ " + percentBar(percent) + " (" + fmtRemaining(differenceTime) + ")";
                     await ulog(msg);
                     running = false;
                     clearInterval(stageIntervale);
@@ -2544,6 +2545,7 @@
         await ulog("restored main thread to core " + S.orig_main_core);
 
         await ulog("=== p2jb complete ===");
+        kill_youtube();
 
     } catch (e) {
         try { await log("p2jb FATAL: " + e.message); } catch (_) { }
